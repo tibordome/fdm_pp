@@ -6,7 +6,11 @@ Created on Thu Nov 26 11:53:13 2020
 @author: tibor
 """
     
-
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
+from print_msg import print_status
 import os
 import inspect
 
@@ -27,7 +31,8 @@ def initialize():
     # is paramount not to leave out any outskirt particle in the outermost sphere/shell. This is achieved by adding some SAFE to max_i || COM - x_i|| to get d_max.
     global MIN_NUMBER_DM_PTCS # Minimum number of DM particles in CSH to qualify for catalogue entry
     global MIN_NUMBER_STAR_PTCS # Minimum number of star particles in galaxy to qualify for catalogue entry
-    global SNAP_ABB # String (here), 3 digits after snapdir_* to differentiate snapshots from one another
+    global SNAP_ABB # List of strings, 3 digits after snapdir_* to differentiate snapshots from one another
+    global SNAP # Momentary snap that is being dealt with, always updated
     global CAT_DEST # Where to store catalogues of E1 results
     global VIZ_DEST # Where the visualizations of shapes, major axes are stored
     global HDF5_SNAP_DEST # Where we can find the snapshot
@@ -99,7 +104,8 @@ def initialize():
     currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     
     # File/Folder Locations
-    SNAP_ABB = "030"
+    SNAP_ABB = ["024","026","028","030","032","034"]
+    SNAP = "024"
     VIZ_DEST =  os.path.join(currentdir, '..', 'output', 'viz')
     HDF5_SNAP_DEST = getHDF5_SNAP_DEST()
     SHAPE_DEST = os.path.join(currentdir, '..', 'output', 'shapes')
@@ -111,3 +117,10 @@ def initialize():
 def getHDF5_SNAP_DEST():
     global SNAP_ABB
     return '/data/highz2/AFdata2/AF_PRL_BECDM/BBGas1024L17s14/snapdir_{0}'.format(SNAP_ABB)
+
+def makeGlobalDM_TYPE(snap, start_time):
+    print_status(rank, start_time, "Changing to snap {1}".format(snap))
+    global HDF5_SNAP_DEST
+    global SNAP
+    HDF5_SNAP_DEST = getHDF5_SNAP_DEST(snap)
+    SNAP = snap

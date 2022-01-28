@@ -4,8 +4,13 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/data/vault/td448/DisPerSE/external/gmp/
 
 cd ../output
 bash create_dir.bash
-cd ../src/shape_al_fdm/cat_gen
+cd ../src/fdm_pp/utilities
+rm make_grid_cic.c
+rm make_grid_cic.so
 rm make_grid_nn.c
 rm make_grid_nn.so
+rm fdm_utilities.cpp
+rm fdm_utilities.so
 python3 setup.py build_ext --inplace
-mpirun -n 8 python3 create_catalogue.py
+cd ../cat_gen
+mpirun -n 8 python3 run_cat_gen.py

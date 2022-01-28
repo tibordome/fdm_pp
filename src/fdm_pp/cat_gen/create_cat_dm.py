@@ -9,8 +9,6 @@ Created on Tue Mar  2 10:09:58 2021
 import numpy as np
 import time
 import json
-#import sys
-#np.set_printoptions(threshold=sys.maxsize)
 import make_grid_nn
 from get_hdf5 import getHDF5DMData
 from print_msg import print_status
@@ -79,8 +77,8 @@ def createCatDM():
     print_status(rank, start_time, "Determine MDelta values...")
     if rank == 0:
         M_Delta, R_Delta, invalids = getMDelta(rho_enc, rhobar, M_enc, R_enc, Npeaks) # All have shapes [Npeaks,]
-        np.savetxt('{0}/m_delta_fdm_dm.txt'.format(config.CAT_DEST), M_Delta, fmt='%1.7e')
-        np.savetxt('{0}/r_delta_fdm_dm.txt'.format(config.CAT_DEST), R_Delta, fmt='%1.7e')
+        np.savetxt('{0}/m_delta_fdm_dm_{1}.txt'.format(config.CAT_DEST), M_Delta, config.SNAP, fmt='%1.7e')
+        np.savetxt('{0}/r_delta_fdm_dm_{1}.txt'.format(config.CAT_DEST), R_Delta, config.SNAP, fmt='%1.7e')
         print_status(rank, start_time, "The first 5 M_Delta are {0}, the first 5 R_Delta are {1}, and the number of invalids is {2}".format(M_Delta[:5], R_Delta[:5], len(invalids)))
     else:
         R_Delta = np.zeros((Npeaks,), dtype = np.float32)
@@ -92,7 +90,7 @@ def createCatDM():
     print_status(rank, start_time, "Get density profiles...")
     if rank == 0:
         rho_profiles = getDensityProfiles(coords, rho, Npeaks, invalids) # Shape [Npeaks, config.N]
-        np.savetxt('{0}/rho_profiles_fdm_dm.txt'.format(config.CAT_DEST), rho_profiles, fmt='%1.7e')
+        np.savetxt('{0}/rho_profiles_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP), rho_profiles, fmt='%1.7e')
         print_status(rank, start_time, "Gotten density profiles...")
         print_status(rank, start_time, "The first peak has the following rho_profiles: {0}".format(rho_profiles[0]))
 
@@ -104,7 +102,7 @@ def createCatDM():
     
     # Writing
     if rank == 0:
-        with open('{0}/sh_cat_fdm.txt'.format(config.CAT_DEST), 'w') as filehandle:
+        with open('{0}/sh_cat_fdm_{1}.txt'.format(config.CAT_DEST, config.SNAP), 'w') as filehandle:
             json.dump(sh_cat, filehandle)
             
-        np.savetxt('{0}/sh_coms_fdm.txt'.format(config.CAT_DEST), coms, fmt='%1.7e')
+        np.savetxt('{0}/sh_coms_fdm_{1}.txt'.format(config.CAT_DEST, config.SNAP), coms, fmt='%1.7e')

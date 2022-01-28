@@ -9,16 +9,6 @@ Created on Tue Dec 15 14:24:59 2020
 import numpy as np
 
 def accumarray(subs, vals, size=None, fun=np.sum):
-    """Modeled on MATLAB's accumarray function
-    Sums (or whatever is in fun) the values in vals that have identical subscripts in subs.
-    E.g. accumarray(subs,1) counts elements in each group defined by subs
-    The indices in subs define the matrix dimensions of the output, unless size
-    is specified in which case the output is padded by zero to that shape.
-    Args:
-    -----------
-    subs: pandas dataframe object (2D, not 1D)
-    vals: pandas series object (1D), whose length can be longer than subs's first dimension,
-    but in that case the vals beyond subs' largest index cannot be taken into consideration"""
 
     if len(subs.shape) == 1:
         if size is None:

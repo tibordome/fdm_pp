@@ -31,13 +31,21 @@ def createCatDM():
                  
     # Construct rho grid
     if rank == 0:
-        rho = make_grid_nn.makeGridWithNNPBC(dm_xyz[:,0].astype('float32'), dm_xyz[:,1].astype('float32'), dm_xyz[:,2].astype('float32'), dm_masses.astype('float32'), config.L_BOX, config.N).astype('float32') # Shape (config.N, config.N, config.N)
-        rho = np.ascontiguousarray(rho, dtype = np.float32)
+        rho_tmp = make_grid_nn.makeGridWithNNPBC(dm_xyz[:,0].astype('float32'), dm_xyz[:,1].astype('float32'), dm_xyz[:,2].astype('float32'), dm_masses.astype('float32'), config.L_BOX, config.N).astype('float32') # Shape (config.N, config.N, config.N)
     else:
-        rho = np.zeros((config.N,config.N,config.N), dtype = np.float32)
-        rho = np.ascontiguousarray(rho, dtype = np.float32)
-    comm.Bcast(rho, root = 0)
+        rho_tmp = np.zeros((config.N,config.N,config.N), dtype = np.float32)
+    rho_tmp = rho_tmp.flatten()
+    nb_dm_ptcs = config.N**3
+    pieces = 1 + (nb_dm_ptcs>=3*10**8)*nb_dm_ptcs//(3*10**8) # Not too high since this is a slow-down!
+    chunk = nb_dm_ptcs//pieces
+    rho = np.empty(0, dtype = np.float32)
+    for i in range(pieces):
+        to_bcast = rho_tmp[i*chunk:(i+1)*chunk+(i==(pieces-1))*(nb_dm_ptcs-pieces*chunk)]
+        comm.Bcast(to_bcast, root=0)
+        rho = np.hstack((rho, to_bcast))
+    rho = np.reshape(rho, (config.N, config.N, config.N))
     rhobar = np.mean(rho)
+    del rho_tmp
     print_status(rank, start_time, "Minimum density is {0} and maximum density is {1} while rhobar is {2}".format(rho.min(), rho.max(), rhobar))
     print_status(rank, start_time, "The maximum density is located at {0}".format(np.unravel_index(rho.argmax(), rho.shape)))
 
@@ -60,6 +68,7 @@ def createCatDM():
         coords = coords[mask].astype('float32')
         values = values[mask]
         Npeaks = coords.shape[0]
+        del V
         print_status(rank, start_time, "The number of peaks is {0} and the first 5 peaks are located at {1} with -V values {2}".format(Npeaks, coords[:5], values[:5]))
     else:
         Npeaks = None
@@ -70,7 +79,7 @@ def createCatDM():
         
     # Calculate MDelta via enclosed mass profiles
     print_status(rank, start_time, "Determine enclosed mass profile...")
-    rho_enc, R_enc, M_enc = getEnclosedMassProfiles(coords.astype('int32'), rho.astype('float32'), Npeaks) # All have shapes [Npeaks, Nchar]
+    rho_enc, R_enc, M_enc = getEnclosedMassProfiles(coords.astype('int32'), rho, Npeaks) # All have shapes [Npeaks, Nchar]
     print_status(rank, start_time, "Finished getEnclosedMassProfiles(), shapes are {0}, {1}, {2}".format(rho_enc.shape, R_enc.shape, M_enc.shape))
     print_status(rank, start_time, "The first peak has the following rho_enc, R_enc, and M_enc: {0}, {1}, {2}".format(rho_enc[0], R_enc[0], M_enc[0]))
 

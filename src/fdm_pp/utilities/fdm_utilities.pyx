@@ -30,7 +30,7 @@ def getPotential( rho, rhobar, Lbox, G ):
 
     # fourier space variables
     klin = (2*np.pi/Lbox) * np.arange(-N/2,N/2)
-    kx, ky, kz = np.meshgrid(klin, klin, klin)
+    kx, ky, kz = np.meshgrid(klin, klin, klin, indexing='ij')
     kSq = kx**2 + ky**2 + kz**2
     kSq = np.fft.fftshift(kSq) # this brings it into the fft output format [0, pos, neg] frequ
     kSq[kSq==0]=1 # There is no infinite wavelength mode in a finite box...
@@ -114,7 +114,7 @@ def getEnclosedMassProfiles(int[:,:] coords, float[:,:,:] rho, int Npeaks):
     
     # Precalculate meshgrid entries
     for p in range(rank_*perrank, (rank_+1)*perrank+last*(Npeaks-(rank_+1)*perrank)):
-        [iipy.base[p-rank_*perrank], jjpy.base[p-rank_*perrank], kkpy.base[p-rank_*perrank]] = np.meshgrid(np.arange(coords[p, 0]-config.NCHAR,coords[p, 0]+config.NCHAR+1), np.arange(coords[p, 1]-config.NCHAR,coords[p, 1]+config.NCHAR+1), np.arange(coords[p, 2]-config.NCHAR,coords[p, 2]+config.NCHAR+1)) 
+        [iipy.base[p-rank_*perrank], jjpy.base[p-rank_*perrank], kkpy.base[p-rank_*perrank]] = np.meshgrid(np.arange(coords[p, 0]-config.NCHAR,coords[p, 0]+config.NCHAR+1), np.arange(coords[p, 1]-config.NCHAR,coords[p, 1]+config.NCHAR+1), np.arange(coords[p, 2]-config.NCHAR,coords[p, 2]+config.NCHAR+1), indexing='ij') 
         ii.base[p-rank_*perrank] = iipy.base[p-rank_*perrank] % config.N # Shape is (2*config.NCHAR+1, 2*config.NCHAR+1, 2*config.NCHAR+1)
         jj.base[p-rank_*perrank] = jjpy.base[p-rank_*perrank] % config.N
         kk.base[p-rank_*perrank] = kkpy.base[p-rank_*perrank] % config.N
@@ -187,14 +187,14 @@ def getDensityProfiles(coords, rho, Npeaks, invalids):
     For each peak, get config.N values with radial jump being config.DEL_X/2"""
     rBins = config.DEL_X/2*np.arange(1,config.N+1) # With this, we cover the entire grid (PBC)
     rho_profile = np.zeros((Npeaks, config.N))
-    [ix, iy, iz] = np.meshgrid(np.arange(0,config.N), np.arange(0,config.N), np.arange(0,config.N))
+    [ix, iy, iz] = np.meshgrid(np.arange(0,config.N), np.arange(0,config.N), np.arange(0,config.N), indexing='ij')
     for p in range(Npeaks):
         if p not in invalids:
-            d = config.DEL_X *(np.reshape(iy, (config.N**3,))-coords[p,0]) # Has shape (config.N**3,)
+            d = config.DEL_X *(np.reshape(ix, (config.N**3,))-coords[p,0]) # Has shape (config.N**3,)
             d[d<-config.L_BOX/2] = d[d<-config.L_BOX/2] + config.L_BOX
             d[d>config.L_BOX/2]  = d[d>config.L_BOX/2]  - config.L_BOX
             r2 = np.power(d,2)
-            d = config.DEL_X *(np.reshape(ix, (config.N**3,))-coords[p,1])
+            d = config.DEL_X *(np.reshape(iy, (config.N**3,))-coords[p,1])
             d[d<-config.L_BOX/2] = d[d<-config.L_BOX/2] + config.L_BOX
             d[d>config.L_BOX/2]  = d[d>config.L_BOX/2]  - config.L_BOX
             r2 = r2 + np.power(d,2)

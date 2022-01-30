@@ -12,15 +12,13 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 sys.path.append(os.path.join(currentdir, '..', '..', '..', 'config'))
 sys.path.append(os.path.join(currentdir, '..', 'utilities'))
 from print_msg import print_status
-from analyze_gx_alignments import analyze_gx_alignments
-from analyze_gx_shapes import analyze_gx_shapes
-from analyze_dm_alignments import analyze_dm_alignments
+from gx_shapes import gx_shapes
 from dm_shapes import dm_shapes
 from dm_profiles import dm_profiles
 from majors_projected_dm import projectMajorsHalo
 from majors_projected_gx import projectMajorsGx
 import config
-from config import makeGlobalHALO_REGION, makeGlobalDM_TYPE
+from config import makeGlobalHALO_REGION, makeGlobalSNAP
 config.initialize()
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -37,13 +35,12 @@ for snap in config.SNAP_ABB:
     # NEXUS analysis
     #vol_mass_frac(start_time) # Changes snap, but reversed in next line
     
-    makeGlobalDM_TYPE(snap, start_time)
+    makeGlobalSNAP(snap, start_time)
     
-    # Gx alignment analysis
-    #analyze_gx_alignments()
-    #analyze_gx_shapes()
+    # Gx analysis
+    gx_shapes()
     
-    # SH alignment analysis
+    # SH analysis
     makeGlobalHALO_REGION('Full')
     dm_shapes(start_time) # For ellipticity histogram only
     makeGlobalHALO_REGION('Inner')

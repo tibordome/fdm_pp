@@ -28,7 +28,7 @@ size = comm.Get_size()
 from scipy import special
 from math import isnan
 import config
-from config import makeGlobalDM_TYPE, getA
+from config import makeGlobalSNAP, getA
 
 def getMWDMFromFDM(m_FDM):
     """ Return WDM mass in keV for m_FDM in eV
@@ -456,71 +456,101 @@ def getChiSquare(mean_2D): # https://libguides.library.kent.edu/spss/chisquare
     p_chi_square = 1 - stats.chi2.cdf(chi_square, dof) # p value for chi_square and dof dof
     return chi_square, p_chi_square, dof
 
+def readDataGx():
+    """ Read in all relevant Gx data"""
+    
+    if config.HALO_REGION == "Inner":
+        with open('{0}/a_com_cat_local_fdm_gx_{1}.txt'.format(config.CAT_DEST, config.SNAP), 'r') as filehandle:
+            a_com_cat_fdm = json.load(filehandle)
+        d_fdm = np.loadtxt('{0}/d_local_fdm_gx_{1}.txt'.format(config.CAT_DEST, config.SNAP))
+        q_fdm = np.loadtxt('{0}/q_local_fdm_gx_{1}.txt'.format(config.CAT_DEST, config.SNAP))
+        s_fdm = np.loadtxt('{0}/s_local_fdm_gx_{1}.txt'.format(config.CAT_DEST, config.SNAP))
+        # Dealing with the case of 1 gx
+        if d_fdm.shape[0] == config.D_BINS+1:
+            d_fdm = d_fdm.reshape(1, config.D_BINS+1)
+            q_fdm = q_fdm.reshape(1, config.D_BINS+1)
+            s_fdm = s_fdm.reshape(1, config.D_BINS+1)
+        with open('{0}/gx_cat_local_fdm_{1}.txt'.format(config.CAT_DEST, config.SNAP), 'r') as filehandle:
+            gx_cat_fdm = json.load(filehandle)
+    else:
+        assert config.HALO_REGION == "Full"
+        with open('{0}/a_com_cat_overall_fdm_gx_{1}.txt'.format(config.CAT_DEST, config.SNAP), 'r') as filehandle:
+            a_com_cat_fdm = json.load(filehandle)
+        d_fdm = np.loadtxt('{0}/d_overall_fdm_gx_{1}.txt'.format(config.CAT_DEST, config.SNAP))
+        d_fdm = d_fdm.reshape(d_fdm.shape[0], 1) # Has shape (number_of_gxs, 1)
+        q_fdm = np.loadtxt('{0}/q_overall_fdm_gx_{1}.txt'.format(config.CAT_DEST, config.SNAP))
+        q_fdm = q_fdm.reshape(q_fdm.shape[0], 1) # Has shape (number_of_gxs, 1)
+        s_fdm = np.loadtxt('{0}/s_overall_fdm_gx_{1}.txt'.format(config.CAT_DEST, config.SNAP))
+        s_fdm = s_fdm.reshape(s_fdm.shape[0], 1) # Has shape (number_of_gxs, 1)
+        with open('{0}/gx_cat_overall_fdm_{1}.txt'.format(config.CAT_DEST, config.SNAP), 'r') as filehandle:
+            gx_cat_fdm = json.load(filehandle)
+    sh_masses_fdm = np.loadtxt('{0}/m_delta_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_hs,)
+    return a_com_cat_fdm, gx_cat_fdm, d_fdm, q_fdm, s_fdm, sh_masses_fdm
 
 def readDataFDM(get_skeleton = False):
     """ Read in all relevant FDM data, with or without skeleton"""
     
     if config.HALO_REGION == "Inner":
-        with open('{0}/a_com_cat_local_{1}_dm_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP), 'r') as filehandle:
+        with open('{0}/a_com_cat_local_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP), 'r') as filehandle:
             a_com_cat = json.load(filehandle)
-        d = np.loadtxt('{0}/d_local_{1}_dm_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP)) # Has shape (number_of_halos, config.D_BINS+1)
-        q = np.loadtxt('{0}/q_local_{1}_dm_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP)) # Has shape (number_of_halos, config.D_BINS+1)
-        s = np.loadtxt('{0}/s_local_{1}_dm_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP)) # Has shape (number_of_halos, config.D_BINS+1)
+        d = np.loadtxt('{0}/d_local_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_halos, config.D_BINS+1)
+        q = np.loadtxt('{0}/q_local_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_halos, config.D_BINS+1)
+        s = np.loadtxt('{0}/s_local_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_halos, config.D_BINS+1)
         # Dealing with the case of 1 halo
         if d.shape[0] == config.D_BINS+1:
             d = d.reshape(1, config.D_BINS+1)
             q = q.reshape(1, config.D_BINS+1)
             s = s.reshape(1, config.D_BINS+1)
-        major_full = np.loadtxt('{0}/major_local_{1}_dm_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP))
+        major_full = np.loadtxt('{0}/major_local_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP))
         if major_full.ndim == 2: 
             major_full = major_full.reshape(major_full.shape[0], major_full.shape[1]//3, 3) # Has shape (number_of_halos, config.D_BINS+1, 3)
         else:
             if major_full.shape[0] == (config.D_BINS+1)*3: # This case is when there is only 1 halo (np.savetxt loses (1,config.D_BINS+1) array shape --> (config.D_BINS+1,))
                 major_full = major_full.reshape(1, config.D_BINS+1, 3)
-        with open('{0}/h_cat_local_{1}_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP), 'r') as filehandle:
+        with open('{0}/sh_cat_local_fdm_{1}.txt'.format(config.CAT_DEST, config.SNAP), 'r') as filehandle:
             h_cat = json.load(filehandle)
     else:
         assert config.HALO_REGION == "Full"
-        with open('{0}/a_com_cat_overall_{1}_dm_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP), 'r') as filehandle:
+        with open('{0}/a_com_cat_overall_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP), 'r') as filehandle:
             a_com_cat = json.load(filehandle)
-        d = np.loadtxt('{0}/d_overall_{1}_dm_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP)) # Has shape (number_of_halos, )
+        d = np.loadtxt('{0}/d_overall_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_halos, )
         d = d.reshape(d.shape[0], 1) # Has shape (number_of_halos, 1)
-        q = np.loadtxt('{0}/q_overall_{1}_dm_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP)) # Has shape (number_of_halos, )
+        q = np.loadtxt('{0}/q_overall_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_halos, )
         q = q.reshape(q.shape[0], 1) # Has shape (number_of_halos, 1)
-        s = np.loadtxt('{0}/s_overall_{1}_dm_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP)) # Has shape (number_of_halos, )
+        s = np.loadtxt('{0}/s_overall_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_halos, )
         s = s.reshape(s.shape[0], 1) # Has shape (number_of_halos, 1)
-        major_full = np.loadtxt('{0}/major_overall_{1}_dm_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP))
+        major_full = np.loadtxt('{0}/major_overall_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP))
         if major_full.ndim == 2:
             major_full = major_full.reshape(major_full.shape[0], major_full.shape[1]//3, 3) # Has shape (number_of_halos, 1, 3)
         else:
             if major_full.shape[0] == 3:
                 major_full = major_full.reshape(1, 1, 3)
-        with open('{0}/h_cat_overall_{1}_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP), 'r') as filehandle:
+        with open('{0}/sh_cat_overall_fdm_{1}.txt'.format(config.CAT_DEST, config.SNAP), 'r') as filehandle:
             h_cat = json.load(filehandle)
-    r200 = np.loadtxt('{0}/h_r200_{1}_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP)) # Has shape (number_of_hs,)
-    fof_masses = np.loadtxt('{0}/fof_masses_{1}_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP)) # Has shape (number_of_hs,)
+    rdelta = np.loadtxt('{0}/r_delta_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_hs,)
+    sh_masses = np.loadtxt('{0}/m_delta_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_hs,)
     if get_skeleton == True:
-        with open('{0}/sampling_pos_{1}_{2}.txt'.format(config.SKELETON_DEST, config.DM_TYPE, config.SNAP), 'r') as filehandle:
+        with open('{0}/sampling_pos_fdm_{1}.txt'.format(config.SKELETON_DEST, config.SNAP), 'r') as filehandle:
             sampling_pos = json.load(filehandle)
-        samples = np.loadtxt('{0}/samples_{1}_{2}.txt'.format(config.SKELETON_DEST, config.DM_TYPE, config.SNAP))
-        return a_com_cat, h_cat, d, q, s, major_full, r200, fof_masses, sampling_pos, samples
+        samples = np.loadtxt('{0}/samples_fdm_{1}.txt'.format(config.SKELETON_DEST, config.SNAP))
+        return a_com_cat, h_cat, d, q, s, major_full, rdelta, sh_masses, sampling_pos, samples
     else:
-        return a_com_cat, h_cat, d, q, s, major_full, r200, fof_masses
+        return a_com_cat, h_cat, d, q, s, major_full, rdelta, sh_masses
     
 def readDataVDispFDM():
     """ Read in all relevant DM vel disp data for one DM scenario"""
     
-    q = np.loadtxt('{0}/q_vdisp_{1}_dm_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP)) # Has shape (number_of_halos, 1)
-    q = q.reshape(q.shape[0], 1) # Has shape (number_of_halos, 1)
-    s = np.loadtxt('{0}/s_vdisp_{1}_dm_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP)) # Has shape (number_of_halos, 1)
-    s = s.reshape(s.shape[0], 1) # Has shape (number_of_halos, 1)
-    major_full = np.loadtxt('{0}/major_vdisp_{1}_dm_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP))
+    q = np.loadtxt('{0}/q_vdisp_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_shs, 1)
+    q = q.reshape(q.shape[0], 1) # Has shape (number_of_shs, 1)
+    s = np.loadtxt('{0}/s_vdisp_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_shs, 1)
+    s = s.reshape(s.shape[0], 1) # Has shape (number_of_shs, 1)
+    major_full = np.loadtxt('{0}/major_vdisp_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP))
     if major_full.ndim == 2:
-        major_full = major_full.reshape(major_full.shape[0], major_full.shape[1]//3, 3) # Has shape (number_of_halos, 1, 3)
+        major_full = major_full.reshape(major_full.shape[0], major_full.shape[1]//3, 3) # Has shape (number_of_shs, 1, 3)
     else:
         if major_full.shape[0] == 3:
             major_full = major_full.reshape(1, 1, 3)
-    with open('{0}/h_cat_overall_{1}_{2}.txt'.format(config.CAT_DEST, config.DM_TYPE, config.SNAP), 'r') as filehandle:
+    with open('{0}/sh_cat_overall_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP), 'r') as filehandle:
         h_cat = json.load(filehandle)
     return h_cat, q, s, major_full
 
@@ -528,41 +558,88 @@ def getZ(snaps, start_time):
     """ Returns redshifts from list of snaps"""
     z = np.zeros((len(snaps),), dtype = np.float32)
     for i, snap in enumerate(snaps):
-        makeGlobalDM_TYPE(config.DM_TYPE, snap, start_time)
+        makeGlobalSNAP(snap, start_time)
         z[i] = getA()**(-1)-1
     return z
 
-def assembleDataFDM(a_com_cat, h_cat, d, q, s, major_full, r200, fof_masses):
+def assembleDataFDM(a_com_cat, h_cat, d, q, s, major_full, sh_masses):
     """ Assemble FDM data"""
     
-    halo_masses = np.empty(0, dtype=np.float32)
-    for halo in range(len(h_cat)):
-        if h_cat[halo] != []:
-            halo_masses = np.hstack((halo_masses, fof_masses[halo]))
-    assert halo_masses.shape[0] == len(a_com_cat)
+    sh_masses_surv = np.empty(0, dtype=np.float32)
+    for sh in range(len(h_cat)):
+        if h_cat[sh] != []:
+            sh_masses_surv = np.hstack((sh_masses_surv, sh_masses[sh]))
+    assert sh_masses_surv.shape[0] == len(a_com_cat)
     
-    halo_com = []
-    for halo in range(len(a_com_cat)):
-        halo_com.append(np.array([a_com_cat[halo][3], a_com_cat[halo][4], a_com_cat[halo][5]]))
-    halo_com_arr = np.array(halo_com) # Has shape (number_of_halos, 3)
+    sh_com = []
+    for sh in range(len(a_com_cat)):
+        sh_com.append(np.array([a_com_cat[sh][3], a_com_cat[sh][4], a_com_cat[sh][5]]))
+    sh_com_arr = np.array(sh_com) # Has shape (number_of_shs, 3)
     
     if config.HALO_REGION == "Full":
         idx = np.array([np.int32(x) for x in list(np.ones((d.shape[0],))*(-1))])
     else:
         assert config.HALO_REGION == "Inner"
         idx = np.zeros((d.shape[0],), dtype = np.int32)
-        for halo in range(idx.shape[0]):
-            idx[halo] = np.argmin(abs(d[halo] - d[halo,-int(config.D_LOGEND/((config.D_LOGEND-config.D_LOGSTART)/config.D_BINS))-1]*0.15))
+        for sh in range(idx.shape[0]):
+            idx[sh] = np.argmin(abs(d[sh] - d[sh,-int(config.D_LOGEND/((config.D_LOGEND-config.D_LOGSTART)/config.D_BINS))-1]*0.15))
     major = np.zeros((len(a_com_cat), 3))
-    for halo in range(len(a_com_cat)):
-        major[halo] = np.array([major_full[halo, idx[halo], 0], major_full[halo, idx[halo], 1], major_full[halo, idx[halo], 2]])
+    for sh in range(len(a_com_cat)):
+        major[sh] = np.array([major_full[sh, idx[sh], 0], major_full[sh, idx[sh], 1], major_full[sh, idx[sh], 2]])
     
     t = np.zeros((d.shape[0],))
-    for halo in range(idx.shape[0]):
-        t[halo] = (1-q[halo,idx[halo]]**2)/(1-s[halo,idx[halo]]**2) # Triaxiality
+    for sh in range(idx.shape[0]):
+        t[sh] = (1-q[sh,idx[sh]]**2)/(1-s[sh,idx[sh]]**2) # Triaxiality
     t = np.nan_to_num(t)
     
-    return halo_masses, halo_com_arr, idx, major, t
+    return sh_masses_surv, sh_com_arr, idx, major, t
+
+def assembleDataGx(gx_cat_fdm, a_com_cat_fdm, q_fdm, s_fdm, sh_masses_fdm):
+    """ Assemble Gx data for all gxs whose triaxility
+    is in the window specified by config.T_CUT_LOW and config.T_CUT_HIGH
+    Note that for gxs, there is no shape determination success related filtering.
+    Returns:
+    sh_masses_surv: (# gxs,) 1D float array, masses of shs
+    gx_com_arr_fdm: (# gxs, 3) float array, COMs of gxs
+    idx_x: (# gxs,) 1D int array, ellipsoidal radius index (HALO_REGION-dependent) 
+    major_fdm: (# gxs, 3) float array, major axis of gxs
+    t_fdm: (# gxs,) float array, triaxialities of gxs (after applying T cuts)"""
+    
+    sh_masses_surv = np.empty(0, dtype=np.float32)
+    for sh in range(len(gx_cat_fdm)):
+        if gx_cat_fdm[sh] != []:
+            sh_masses_surv = np.hstack((sh_masses_surv, sh_masses_fdm[sh]))
+            
+    assert sh_masses_surv.shape[0] == len(a_com_cat_fdm)
+            
+    gx_com_fdm = []
+    for gx in range(len(a_com_cat_fdm)):
+        gx_com_fdm.append(np.array([a_com_cat_fdm[gx][3], a_com_cat_fdm[gx][4], a_com_cat_fdm[gx][5]]))
+    gx_com_arr_fdm = np.array(gx_com_fdm) # Has shape (number_of_gxs, 3)
+    gx_com_fdm = list(gx_com_arr_fdm)
+    
+    major_fdm = np.zeros((len(a_com_cat_fdm), 3))
+    for gx in range(len(a_com_cat_fdm)):
+        major_fdm[gx] = np.array([a_com_cat_fdm[gx][0], a_com_cat_fdm[gx][1], a_com_cat_fdm[gx][2]])
+        
+    t_fdm = np.zeros((q_fdm.shape[0],))
+    for gx in range(q_fdm.shape[0]):
+        t_fdm[gx] = (1-q_fdm[gx,-1]**2)/(1-s_fdm[gx,-1]**2) # Triaxiality   
+    t_fdm = np.nan_to_num(t_fdm)
+    
+    if config.T_CUT_LOW != 0.0:
+        sh_masses_surv = sh_masses_surv[t_fdm > config.T_CUT_LOW]
+        gx_com_arr_fdm = gx_com_arr_fdm[t_fdm > config.T_CUT_LOW]
+        major_fdm = major_fdm[t_fdm > config.T_CUT_LOW]
+        t_fdm = t_fdm[t_fdm > config.T_CUT_LOW]
+        
+    if config.T_CUT_HIGH != 1.0:
+        sh_masses_surv = sh_masses_surv[t_fdm < config.T_CUT_HIGH]
+        gx_com_arr_fdm = gx_com_arr_fdm[t_fdm < config.T_CUT_HIGH]
+        major_fdm = major_fdm[t_fdm < config.T_CUT_HIGH]
+        t_fdm = t_fdm[t_fdm < config.T_CUT_HIGH]
+    
+    return sh_masses_surv, gx_com_arr_fdm, major_fdm, t_fdm
 
 def getPDF(seps, d_bins):
     """ Get PDF of distance distribution from nearest skeleton

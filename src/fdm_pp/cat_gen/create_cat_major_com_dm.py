@@ -21,7 +21,7 @@ import config
 
 def createCatMajorCOMDM():          
     start_time = time.time()
-    print_status(rank,start_time,'Starting createCatMajorCOMDM()')
+    print_status(rank,start_time,'Starting createCatMajorCOMDM() with snap {0}'.format(config.SNAP))
     
     # Import hdf5 data and reading SH COMs
     print_status(rank,start_time,"Getting HDF5 raw data..")

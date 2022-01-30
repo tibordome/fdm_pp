@@ -88,7 +88,7 @@ def initialize():
     D_BINS = 40
     MIN_NUMBER_DM_PTCS = 200
     MIN_NUMBER_STAR_PTCS = 100
-    NCHAR = int(N/2)-1 
+    NCHAR = int(N/4)-1 
     OVERDENSITY = 200
         
     # Morphology Parameters
@@ -107,19 +107,19 @@ def initialize():
     SNAP_ABB = ["024","026","028","030","032","034"]
     SNAP = "024"
     VIZ_DEST =  os.path.join(currentdir, '..', 'output', 'viz')
-    HDF5_SNAP_DEST = getHDF5_SNAP_DEST()
+    HDF5_SNAP_DEST = getHDF5_SNAP_DEST(SNAP)
     SHAPE_DEST = os.path.join(currentdir, '..', 'output', 'shapes')
     ALIGNMENT_DEST = os.path.join(currentdir, '..', 'output', 'alignments')
     PROJECTION_DEST = os.path.join(currentdir, '..', 'output', 'viz', 'projections')
     CAT_DEST = os.path.join(currentdir, '..', 'output', 'catalogues')
     SNAP_MAX = 16
     
-def getHDF5_SNAP_DEST():
+def getHDF5_SNAP_DEST(snap):
     global SNAP_ABB
-    return '/data/highz2/AFdata2/AF_PRL_BECDM/BBGas1024L17s14/snapdir_{0}'.format(SNAP_ABB)
+    return '/data/highz2/AFdata2/AF_PRL_BECDM/BBGas1024L17s14/snapdir_{0}'.format(snap)
 
-def makeGlobalDM_TYPE(snap, start_time):
-    print_status(rank, start_time, "Changing to snap {1}".format(snap))
+def makeGlobalSNAP(snap, start_time):
+    print_status(rank, start_time, "Changing to snap {0}".format(snap))
     global HDF5_SNAP_DEST
     global SNAP
     HDF5_SNAP_DEST = getHDF5_SNAP_DEST(snap)

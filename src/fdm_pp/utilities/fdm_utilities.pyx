@@ -126,6 +126,9 @@ def getEnclosedMassProfiles(int[:,:] coords, float[:,:,:] rho, int Npeaks):
     for p in range(nb_peaks):
         rho_enc[p] = np.divide(M_enc[p], 4/3*np.pi*np.power(R_enc, 3))
     
+    # Clean-up
+    del iipy; del jjpy; del kkpy; del ii; del jj; del kk
+    
     # Gather results from different ranks
     M_enc = np.reshape(M_enc.base, (1, nb_peaks*config.NCHAR))
     rho_enc = np.reshape(rho_enc, (1, nb_peaks*config.NCHAR))
@@ -207,6 +210,7 @@ def getDensityProfiles(coords, rho, Npeaks, invalids):
             H = myBinMean1D(r, np.reshape(rho, (config.N**3,)), rBins) # Shape is (config.N,)
         
             rho_profile[p,:] = H # Shape is (config.N,)
+    del ix; del iy; del iz
     return rho_profile
         
 def getMDelta(rho_enc, rhobar, M_enc, R_enc, Npeaks):

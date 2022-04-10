@@ -1,0 +1,15 @@
+Universe        = vanilla
+Executable      = submit_nexus.bash
+Output          = OUTPUT/out.$(Cluster).$(Process).txt
+Error           = OUTPUT/error.$(Cluster).$(Process).txt
+Log             = OUTPUT/log.$(Cluster).$(Process).txt
+notification = Never
+should_transfer_files = NO
+getenv = True
+Arguments = $(Process)
+Requirements =  TARGET.FileSystemDomain == "calx090.ast.cam.ac.uk"
+Request_memory = 500000
+Request_cpus = 10
+stream_output = True
+OnExitRemove = (ExitStatus == 0)
+Queue 1

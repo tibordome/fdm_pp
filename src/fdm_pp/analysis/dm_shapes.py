@@ -12,14 +12,14 @@ import matplotlib
 matplotlib.rcParams.update({'font.size': 13})
 from scientific_notation import eTo10
 from get_hdf5 import getHDF5DMData
-from function_utilities import readDataFDM, assembleDataFDM, getProfile, getProfileMs, getEpsilon
+from function_utilities import readDataFDM, assembleDataFDM, getProfile, getProfileMs, getEpsilon, getProfileOneObj
 from splitting import M_split
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 import config
-from config import makeGlobalSNAP
+from config import makeGlobalDM_TYPE
 from print_msg import print_status
 
     
@@ -34,7 +34,7 @@ def dm_shapes(start_time):
     if rank == 0:
         
         # Reading
-        a_com_cat_fdm, h_cat_fdm, d_fdm, q_fdm, s_fdm, major_fdm_full, r200_fdm, sh_masses_fdm = readDataFDM(get_skeleton = False)
+        a_com_cat_fdm, h_cat_fdm, d_fdm, q_fdm, s_fdm, major_fdm_full, rdelta_fdm, sh_masses_fdm = readDataFDM(get_skeleton = False)
         eps_9_fdm = np.loadtxt('{0}/eps_9_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP))
         print_status(rank, start_time, "The number of FDM shs considered is {0}".format(len(a_com_cat_fdm)))
         
@@ -44,7 +44,7 @@ def dm_shapes(start_time):
         # Mass splitting
         max_min_m_fdm, sh_m_groups_fdm, sh_com_groups_fdm, major_groups_fdm, idx_groups_fdm = M_split(config.MASS_UNIT*sh_masses_fdm, sh_com_arr_fdm, "halo", major_fdm)
         
-        # Maximal elliptical radii
+        # Elliptical radii
         R = np.logspace(config.R_LOGSTART,config.R_LOGEND,config.R_BIN+1)
         
         # Averaged profiles
@@ -141,6 +141,47 @@ def dm_shapes(start_time):
             plt.ylim(0.0, 1.0)
             plt.savefig("{0}/dm/ShsTMs_{1}.pdf".format(config.SHAPE_DEST, config.SNAP), bbox_inches="tight")
         
+            # Individual profiles
+            for sh in range(q_fdm.shape[0]):
+                plt.figure()
+                plt.semilogx(R, getProfileOneObj(R, d_fdm[sh], q_fdm[sh]), label="SH {0}".format(sh))
+                plt.xlabel(r"$r/R_{200}$")
+                plt.ylabel(r"q")
+                if d_fdm.ndim == 2:
+                    eps_9_fdm_indiv = eps_9_fdm/d_fdm[sh,-int(config.D_LOGEND/((config.D_LOGEND-config.D_LOGSTART)/config.D_BINS))-1]
+                else:
+                    eps_9_fdm_indiv = np.nan # We are dealing with empty arrays, i.e. no shs considered
+                plt.axvline(x=eps_9_fdm_indiv, color='r', linestyle='--', label=r'$9\epsilon$ FDM')
+                plt.legend(); plt.legend(fontsize="small")
+                plt.ylim(0.0, 1.0)
+                plt.savefig("{0}/dm/Sh{1}q_{2}.pdf".format(config.SHAPE_DEST, sh, config.SNAP), bbox_inches="tight")
+                
+                plt.figure()
+                plt.semilogx(R, getProfileOneObj(R, d_fdm[sh], s_fdm[sh]), label="SH {0}".format(sh))
+                plt.xlabel(r"$r/R_{200}$")
+                plt.ylabel(r"s")
+                if d_fdm.ndim == 2:
+                    eps_9_fdm_indiv = eps_9_fdm/d_fdm[sh,-int(config.D_LOGEND/((config.D_LOGEND-config.D_LOGSTART)/config.D_BINS))-1]
+                else:
+                    eps_9_fdm_indiv = np.nan # We are dealing with empty arrays, i.e. no shs considered
+                plt.axvline(x=eps_9_fdm_indiv, color='r', linestyle='--', label=r'$9\epsilon$ FDM')
+                plt.legend(); plt.legend(fontsize="small")
+                plt.ylim(0.0, 1.0)
+                plt.savefig("{0}/dm/Sh{1}s_{2}.pdf".format(config.SHAPE_DEST, sh, config.SNAP), bbox_inches="tight")
+                
+                plt.figure()
+                plt.semilogx(R, getProfileOneObj(R, d_fdm[sh], T_fdm[sh]), label="SH {0}".format(sh))
+                plt.xlabel(r"$r/R_{200}$")
+                plt.ylabel(r"T")
+                if d_fdm.ndim == 2:
+                    eps_9_fdm_indiv = eps_9_fdm/d_fdm[sh,-int(config.D_LOGEND/((config.D_LOGEND-config.D_LOGSTART)/config.D_BINS))-1]
+                else:
+                    eps_9_fdm_indiv = np.nan # We are dealing with empty arrays, i.e. no shs considered
+                plt.axvline(x=eps_9_fdm_indiv, color='r', linestyle='--', label=r'$9\epsilon$ FDM')
+                plt.legend(); plt.legend(fontsize="small")
+                plt.ylim(0.0, 1.0)
+                plt.savefig("{0}/dm/Sh{1}T_{2}.pdf".format(config.SHAPE_DEST, sh, config.SNAP), bbox_inches="tight")
+            
         # T counting
         plt.figure()
         t_fdm[t_fdm == 0.] = np.nan
@@ -156,51 +197,10 @@ def dm_shapes(start_time):
                 
         t_fdm = t_fdm[np.logical_not(np.isnan(t_fdm))]
         print_status(rank, start_time, "{0}. In degrees: The average T value for FDM Shs is {1} and the standard deviation (assuming T is Gaussian distributed) is {2}".format(config.HALO_REGION, round(np.average(t_fdm),2), round(np.std(t_fdm),2)))
-        
-        # Individual profiles
-        for sh in range(q_fdm.shape[0]):
-            plt.figure()
-            plt.semilogx(R, q_fdm[sh], label="SH {0}".format(sh))
-            plt.xlabel(r"$r/R_{200}$")
-            plt.ylabel(r"q")
-            if d_fdm.ndim == 2:
-                eps_9_fdm_indiv = eps_9_fdm/d_fdm[sh,-int(config.D_LOGEND/((config.D_LOGEND-config.D_LOGSTART)/config.D_BINS))-1]
-            else:
-                eps_9_fdm_indiv = np.nan # We are dealing with empty arrays, i.e. no shs considered
-            plt.axvline(x=eps_9_fdm_indiv, color='r', linestyle='--', label=r'$9\epsilon$ FDM')
-            plt.legend(); plt.legend(fontsize="small")
-            plt.ylim(0.0, 1.0)
-            plt.savefig("{0}/dm/Sh{1}q_{2}.pdf".format(config.SHAPE_DEST, sh, config.SNAP), bbox_inches="tight")
-            
-            plt.figure()
-            plt.semilogx(R, s_fdm[sh], label="SH {0}".format(sh))
-            plt.xlabel(r"$r/R_{200}$")
-            plt.ylabel(r"q")
-            if d_fdm.ndim == 2:
-                eps_9_fdm_indiv = eps_9_fdm/d_fdm[sh,-int(config.D_LOGEND/((config.D_LOGEND-config.D_LOGSTART)/config.D_BINS))-1]
-            else:
-                eps_9_fdm_indiv = np.nan # We are dealing with empty arrays, i.e. no shs considered
-            plt.axvline(x=eps_9_fdm_indiv, color='r', linestyle='--', label=r'$9\epsilon$ FDM')
-            plt.legend(); plt.legend(fontsize="small")
-            plt.ylim(0.0, 1.0)
-            plt.savefig("{0}/dm/Sh{1}s_{2}.pdf".format(config.SHAPE_DEST, sh, config.SNAP), bbox_inches="tight")
-            
-            plt.figure()
-            plt.semilogx(R, t_fdm[sh], label="SH {0}".format(sh))
-            plt.xlabel(r"$r/R_{200}$")
-            plt.ylabel(r"q")
-            if d_fdm.ndim == 2:
-                eps_9_fdm_indiv = eps_9_fdm/d_fdm[sh,-int(config.D_LOGEND/((config.D_LOGEND-config.D_LOGSTART)/config.D_BINS))-1]
-            else:
-                eps_9_fdm_indiv = np.nan # We are dealing with empty arrays, i.e. no shs considered
-            plt.axvline(x=eps_9_fdm_indiv, color='r', linestyle='--', label=r'$9\epsilon$ FDM')
-            plt.legend(); plt.legend(fontsize="small")
-            plt.ylim(0.0, 1.0)
-            plt.savefig("{0}/dm/Sh{1}q_{2}.pdf".format(config.SHAPE_DEST, sh, config.SNAP), bbox_inches="tight")
-            
+    
     if config.HALO_REGION == "Full":
         # \epsilon histogram
-        makeGlobalSNAP(config.SNAP, start_time)
+        makeGlobalDM_TYPE("fdm", config.SNAP, start_time)
         dm_xyz, dm_masses, dm_smoothing, dm_velxyz = getHDF5DMData()
         if rank == 0:
             eps_fdm = getEpsilon(h_cat_fdm, dm_xyz, dm_masses)

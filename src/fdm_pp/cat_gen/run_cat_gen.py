@@ -19,19 +19,16 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 sys.path.append(os.path.join(currentdir, '..', '..', '..', 'config'))
 sys.path.append(os.path.join(currentdir, '..', 'utilities'))
 import config
-from config import makeGlobalSNAP
+from config import makeGlobalDM_TYPE
 config.initialize()
 from create_cat_dm import createCatDM
 from create_cat_major_com_dm import createCatMajorCOMDM
 from create_cat_major_com_gx import createCatMajorCOMGx
 
-for snap in config.SNAP_ABB: # DM Catalogue generation
+for snap in config.SNAP_ABB: # SH and gx catalogue generation
     
-    makeGlobalSNAP(snap, start_time)
-    # DM Catalogue generation
-    createCatDM()
-    createCatMajorCOMDM()
+    makeGlobalDM_TYPE("fdm", snap, start_time)
     
-    # Gxs Catalogue generation
-    createCatDM()
-    createCatMajorCOMGx()
+    createCatDM(start_time)
+    createCatMajorCOMDM(start_time)
+    createCatMajorCOMGx(start_time)

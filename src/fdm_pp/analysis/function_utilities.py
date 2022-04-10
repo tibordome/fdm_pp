@@ -28,7 +28,7 @@ size = comm.Get_size()
 from scipy import special
 from math import isnan
 import config
-from config import makeGlobalSNAP, getA
+from config import makeGlobalDM_TYPE, getA
 
 def getMWDMFromFDM(m_FDM):
     """ Return WDM mass in keV for m_FDM in eV
@@ -484,10 +484,10 @@ def readDataGx():
         s_fdm = s_fdm.reshape(s_fdm.shape[0], 1) # Has shape (number_of_gxs, 1)
         with open('{0}/gx_cat_overall_fdm_{1}.txt'.format(config.CAT_DEST, config.SNAP), 'r') as filehandle:
             gx_cat_fdm = json.load(filehandle)
-    sh_masses_fdm = np.loadtxt('{0}/m_delta_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_hs,)
+    sh_masses_fdm = np.loadtxt('{0}/m_delta_fdm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_hs,)
     return a_com_cat_fdm, gx_cat_fdm, d_fdm, q_fdm, s_fdm, sh_masses_fdm
 
-def readDataFDM(get_skeleton = False):
+def readDataFDM(get_skeleton = False, get_profiles = False):
     """ Read in all relevant FDM data, with or without skeleton"""
     
     if config.HALO_REGION == "Inner":
@@ -527,15 +527,25 @@ def readDataFDM(get_skeleton = False):
                 major_full = major_full.reshape(1, 1, 3)
         with open('{0}/sh_cat_overall_fdm_{1}.txt'.format(config.CAT_DEST, config.SNAP), 'r') as filehandle:
             h_cat = json.load(filehandle)
-    rdelta = np.loadtxt('{0}/r_delta_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_hs,)
-    sh_masses = np.loadtxt('{0}/m_delta_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_hs,)
-    if get_skeleton == True:
+    rdelta = np.loadtxt('{0}/r_delta_fdm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_hs,)
+    sh_masses = np.loadtxt('{0}/m_delta_fdm_{1}.txt'.format(config.CAT_DEST, config.SNAP)) # Has shape (number_of_hs,)
+    if get_skeleton == True and get_profiles == False:
         with open('{0}/sampling_pos_fdm_{1}.txt'.format(config.SKELETON_DEST, config.SNAP), 'r') as filehandle:
             sampling_pos = json.load(filehandle)
         samples = np.loadtxt('{0}/samples_fdm_{1}.txt'.format(config.SKELETON_DEST, config.SNAP))
         return a_com_cat, h_cat, d, q, s, major_full, rdelta, sh_masses, sampling_pos, samples
+    elif get_skeleton == False and get_profiles == True:
+        rho_profs = np.loadtxt('{0}/rho_profiles_fdm_dm_{1}.txt'.format(config.CAT_DEST, config.SNAP))
+        rho_profs_surv = []
+        for sh_idx in range(len(h_cat)):
+            if h_cat[sh_idx] != []: # We are removing those SHs' rho_profs whose rdelta shell does not converge in case config.HALO_REGION == "Inner" ...
+                rho_profs_surv.append(rho_profs[sh_idx])
+        rho_profs_surv_arr = np.array(rho_profs_surv)
+        return a_com_cat, h_cat, d, q, s, major_full, rdelta, sh_masses, rho_profs_surv_arr
     else:
+        assert get_skeleton == False and get_profiles == False
         return a_com_cat, h_cat, d, q, s, major_full, rdelta, sh_masses
+    
     
 def readDataVDispFDM():
     """ Read in all relevant DM vel disp data for one DM scenario"""
@@ -558,7 +568,7 @@ def getZ(snaps, start_time):
     """ Returns redshifts from list of snaps"""
     z = np.zeros((len(snaps),), dtype = np.float32)
     for i, snap in enumerate(snaps):
-        makeGlobalSNAP(snap, start_time)
+        makeGlobalDM_TYPE("fdm", snap, start_time)
         z[i] = getA()**(-1)-1
     return z
 
@@ -964,6 +974,45 @@ def getSSOrSPRawRSplit(seps, major, halo_com_arr, max_min_r, group, get_ss = Fal
             alignment = [alignment[i][j] for i in range(size) for j in range(count_new[i])]
     return alignment
 
+def getRhoProfile(R, d_lin, rdelta, param_interest):
+    """ Get average profile for param_interest (which is defined at all values of d_lin)
+    at all elliptical radii R"""
+    y = [[] for i in range(R.shape[0])]
+    for obj in range(param_interest.shape[0]):
+        for rad in range(d_lin.shape[0]):
+            if isnan(param_interest[obj][rad]) or d_lin[rad]/rdelta[obj] < R.min() or d_lin[rad]/rdelta[obj] > R.max():
+                continue
+            else:
+                closest_idx = (np.abs(R - d_lin[rad]/rdelta[obj])).argmin() # Determine which point in R is closest
+                y[closest_idx].append(param_interest[obj][rad])
+    mean, err_low, err_high = getMeanOrMedianAndError(y)
+    return mean, err_low, err_high
+
+def getRhoProfileMs(R, d_lin, rdelta, idx_groups, group, param_interest):
+    """ Similar to getRhoProfile, but with mass-splitting"""
+    y = [[] for i in range(R.shape[0])]
+    for obj in idx_groups[group]:
+        for rad in range(d_lin.shape[0]):
+            if isnan(param_interest[obj][rad]) or d_lin[rad]/rdelta[obj] < R.min() or d_lin[rad]/rdelta[obj] > R.max():
+                continue
+            else:
+                closest_idx = (np.abs(R - d_lin[rad]/rdelta[obj])).argmin() # Determine which point in R is closest
+                y[closest_idx].append(param_interest[obj][rad])
+    mean, err_low, err_high = getMeanOrMedianAndError(y)
+    return mean, err_low, err_high
+
+def getRhoProfileOneObj(R, d_lin, rdelta, param_interest):
+    """ Get profile for param_interest (which is defined at all values of d)
+    at all elliptical radii R"""
+    y = [[] for i in range(R.shape[0])]
+    for rad in range(d_lin.shape[0]):
+        if isnan(param_interest[rad]) or d_lin[rad]/rdelta < R.min() or d_lin[rad]/rdelta > R.max():
+            continue
+        else:
+            closest_idx = (np.abs(R - d_lin[rad]/rdelta)).argmin() # Determine which point in R is closest
+            y[closest_idx].append(param_interest[rad])
+    return np.array([np.average(z) if z != [] else np.nan for z in y]) # return mean
+
 def getProfile(R, d, param_interest):
     """ Get average profile for param_interest (which is defined at all values of d)
     at all elliptical radii R"""
@@ -979,7 +1028,7 @@ def getProfile(R, d, param_interest):
     return mean, err_low, err_high
 
 def getProfileMs(R, d, idx_groups, group, param_interest):
-    """ Similar to getShape, but with mass-splitting"""
+    """ Similar to getProfile, but with mass-splitting"""
     y = [[] for i in range(config.R_BIN+1)]
     for obj in idx_groups[group]:
         for rad in range(config.D_BINS+1):
@@ -990,6 +1039,18 @@ def getProfileMs(R, d, idx_groups, group, param_interest):
                 y[closest_idx].append(param_interest[obj][rad])
     mean, err_low, err_high = getMeanOrMedianAndError(y)
     return mean, err_low, err_high
+
+def getProfileOneObj(R, d, param_interest):
+    """ Get profile for param_interest (which is defined at all values of d)
+    at all elliptical radii R"""
+    y = [[] for i in range(config.R_BIN+1)]
+    for rad in range(config.D_BINS+1):
+        closest_idx = (np.abs(R - d[rad]/d[-int(config.D_LOGEND/((config.D_LOGEND-config.D_LOGSTART)/config.D_BINS))-1])).argmin() # Determine which point in R is closest
+        if isnan(param_interest[rad]) or np.log10(d[rad]/d[-int(config.D_LOGEND/((config.D_LOGEND-config.D_LOGSTART)/config.D_BINS))-1]) > config.R_LOGEND:
+            continue
+        else:
+            y[closest_idx].append(param_interest[rad])
+    return np.array([np.average(z) if z != [] else np.nan for z in y]) # return mean
 
 def labelLine(line,x,label=None,align=True,**kwargs):
     """ Used for IA spectra line labelling"""

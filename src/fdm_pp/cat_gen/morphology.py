@@ -64,8 +64,11 @@ def S1_obj(xyz, masses, d, delta_d):
     masses_new = masses[(com[0]-xyz[:,0])**2+(com[1]-xyz[:,1])**2+(com[2]-xyz[:,2])**2 < d**2]
     masses_new = masses_new[(com[0]-xyz_new[:,0])**2+(com[1]-xyz_new[:,1])**2+(com[2]-xyz_new[:,2])**2 >= (d-delta_d)**2]
     xyz_new = xyz_new[(com[0]-xyz_new[:,0])**2+(com[1]-xyz_new[:,1])**2+(com[2]-xyz_new[:,2])**2 >= (d-delta_d)**2]-com
+    
     err = 1; q_new = 1; s_new = 1; iteration = 1 # Start with spherical shell
-    while (err > config.TOL):
+    eigvec = np.empty((3,3))
+    eigvec[:] = np.nan
+    while (err > config.M_TOL):
         if iteration > config.N_WALL:
             return np.nan, np.nan, np.array([np.nan, np.nan, np.nan]), np.array([np.nan, np.nan, np.nan]), np.array([np.nan, np.nan, np.nan])
         if xyz_new.shape[0] < config.N_MIN:
@@ -123,7 +126,9 @@ def E1_vdisp(xyz, vxyz, masses, d):
     masses_new = masses[(com[0]-xyz[:,0])**2+(com[1]-xyz[:,1])**2+(com[2]-xyz[:,2])**2 < d**2]
     
     err = 1; q_new = 1; s_new = 1; iteration = 1 # Start with sphere
-    while (err > config.TOL):
+    eigvec = np.empty((3,3))
+    eigvec[:] = np.nan
+    while (err > config.M_TOL):
         if iteration > config.N_WALL:
             return np.nan, np.nan, np.array([np.nan, np.nan, np.nan]), np.array([np.nan, np.nan, np.nan]), np.array([np.nan, np.nan, np.nan])
         vdisp_tensor = np.sum((masses_new)[:,np.newaxis,np.newaxis]*(np.matmul(vxyz_new[:,:,np.newaxis],vxyz_new[:,np.newaxis,:])),axis=0)/np.sum(masses_new)
@@ -167,8 +172,11 @@ def E1_obj(xyz, masses, d):
     com = np.sum(xyz*np.reshape(masses, (masses.shape[0],1)), axis = 0)/masses.sum() # COM of particle distribution
     xyz_new = xyz[(com[0]-xyz[:,0])**2+(com[1]-xyz[:,1])**2+(com[2]-xyz[:,2])**2 < d**2]-com
     masses_new = masses[(com[0]-xyz[:,0])**2+(com[1]-xyz[:,1])**2+(com[2]-xyz[:,2])**2 < d**2]
+    
     err = 1; q_new = 1; s_new = 1; iteration = 1 # Start with sphere
-    while (err > config.TOL):
+    eigvec = np.empty((3,3))
+    eigvec[:] = np.nan
+    while (err > config.M_TOL):
         if iteration > config.N_WALL:
             return np.nan, np.nan, np.array([np.nan, np.nan, np.nan]), np.array([np.nan, np.nan, np.nan]), np.array([np.nan, np.nan, np.nan])
         if xyz_new.shape[0] < config.N_MIN:
@@ -204,7 +212,7 @@ def getMorphology(xyz, cat, masses, rdelta, obj_type, poolidx, purpose, start_ti
     cat: List of length N2, each entry a list containing indices of particles belonging to an object
     masses: (N1 x 1) floats, masses of the particles expressed in unit mass
     rdelta: List of length N2, each entry giving the R_delta (mean not critical) radius of the parent halo
-    obj_type: string, either "DM" or "Gxs"
+    obj_type: string, either "dm" or "gxs"
     poolidx: int, Index of object under investigation
     purpose: string, either "local" or "overall", purpose of shape determination, either local shape is of interest, or just overall
     start_time: time.time() object, keeping track of time
@@ -320,7 +328,7 @@ def getMorphology(xyz, cat, masses, rdelta, obj_type, poolidx, purpose, start_ti
         ax.set_zlabel(r"z (cMpc/h)")
         ax.set_box_aspect([1,1,1])
         set_axes_equal(ax)
-        fig.savefig("{}/{}/{}/{}{}.pdf".format(config.VIZ_DEST, config.DM_TYPE, obj_type, obj_type, poolidx+1), bbox_inches='tight')
+        fig.savefig("{}/{}/{}{}_{}.pdf".format(config.VIZ_DEST, obj_type, obj_type, poolidx+1, config.SNAP), bbox_inches='tight')
     if purpose == "local" and isnan(l_q[-1][np.argmin(abs(d - d_max))]): # Return empty lists if rdelta shell did not converge
         l_d = []
         l_q = []
